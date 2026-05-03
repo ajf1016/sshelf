@@ -1,0 +1,38 @@
+linters:
+  enable:
+    - errcheck       # unhandled errors
+    - govet          # go vet checks
+    - staticcheck    # advanced static analysis
+    - unused         # unused code
+    - ineffassign    # assignments whose values are never used
+    - revive         # drop-in replacement for golint
+    - gofmt          # formatting
+    - goimports      # import ordering
+    - gosec          # security issues (hardcoded credentials, unsafe calls, etc.)
+    - misspell       # common spelling mistakes in comments
+
+linters-settings:
+  revive:
+    rules:
+      - name: exported
+        disabled: false
+      - name: var-naming
+        disabled: false
+      - name: unused-parameter
+        disabled: false
+
+  gosec:
+    excludes:
+      - G204   # subprocess launched with variable — expected, we call ssh-keygen
+
+issues:
+  exclude-rules:
+    # Test files don't need to handle all errors (e.g. deferred Close in tests).
+    - path: _test\.go
+      linters: [errcheck, gosec]
+    # Ignore package-comment requirement on files that have a group comment above.
+    - linters: [revive]
+      text: "should have a package comment"
+
+  max-same-issues: 0
+  max-issues-per-linter: 0

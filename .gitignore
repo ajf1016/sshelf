@@ -9,6 +9,6 @@ PRD.md
 phases.txt
 .claude
 .codacy
-.github
+# .github
 
 .env

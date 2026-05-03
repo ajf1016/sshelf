@@ -5,9 +5,13 @@ import (
 	"path/filepath"
 )
 
+const AppName = "sshelf"
+
+// AppVersion is a var so the build pipeline can inject the git tag or commit
+// SHA at link time: -ldflags="-X github.com/ajf1016/sshelf/internal/config.AppVersion=v1.2.3"
+var AppVersion = "0.1.0"
+
 const (
-	AppName    = "sshelf"
-	AppVersion = "0.1.0"
 
 	// Data file names within the config directory.
 	ProfilesFile = "profiles.toml"

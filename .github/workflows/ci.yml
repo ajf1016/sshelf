@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+# Least-privilege permissions — individual jobs escalate only what they need.
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: "1.22"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LINT — static analysis and module hygiene
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true          # caches $GOPATH/pkg/mod + build cache automatically
+
+      - name: Verify module integrity
+        run: go mod verify
+
+      - name: Check go mod tidy
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # TEST — run on every supported OS with the race detector and coverage
+  # ─────────────────────────────────────────────────────────────────────────
+  test:
+    name: Test / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false          # don't cancel sibling jobs if one OS fails
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Run tests
+        run: go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
+
+      - name: Print coverage summary
+        run: go tool cover -func=coverage.out
+
+      - name: Upload coverage report
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.out
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # BUILD — cross-compile static binaries for all target platforms
+  # Runs only after lint + test pass.
+  # ─────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build / ${{ matrix.goos }}-${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          go build -v -trimpath \
+            -ldflags="-s -w -X github.com/ajf1016/sshelf/internal/config.AppVersion=${GITHUB_REF_NAME:-dev}" \
+            -o dist/sshelf-${{ matrix.goos }}-${{ matrix.goarch }} \
+            ./cmd/sshelf
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sshelf-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/sshelf-${{ matrix.goos }}-${{ matrix.goarch }}
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # SECURITY — scan for known vulnerabilities in dependencies
+  # ─────────────────────────────────────────────────────────────────────────
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Run govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
