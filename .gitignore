@@ -10,3 +10,5 @@ phases.txt
 .claude
 .codacy
 .github
+
+.env
