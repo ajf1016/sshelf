@@ -7,10 +7,15 @@ import (
 )
 
 // EnsureDir creates path (and any parents) with perm if it does not already
-// exist. Existing directories are left untouched.
+// exist, then enforces perm on the leaf directory.
 func EnsureDir(path string, perm os.FileMode) error {
 	if err := os.MkdirAll(path, perm); err != nil {
 		return fmt.Errorf("create directory %s: %w", path, err)
+	}
+	// MkdirAll does not change permissions of an already-existing directory,
+	// so chmod explicitly to guarantee the correct mode.
+	if err := os.Chmod(path, perm); err != nil {
+		return fmt.Errorf("chmod %s: %w", path, err)
 	}
 	return nil
 }

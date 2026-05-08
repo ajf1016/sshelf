@@ -20,10 +20,28 @@ var (
 // It is created lazily on first call to getApp(), so commands that don't
 // touch the filesystem (e.g. completion) never create ~/.sshelf.
 type appState struct {
-	store    *core.Store
-	profiles *core.ProfileStore
-	hosts    *core.HostStore
-	verbose  bool
+	store     *core.Store
+	profiles  *core.ProfileStore
+	hosts     *core.HostStore
+	keys      *core.KeyManager
+	agent     *core.AgentManager
+	sshConfig *core.SSHConfigWriter
+	doctor    func() *core.DoctorRunner // constructed on demand
+	verbose   bool
+}
+
+// syncSSHConfig is a convenience helper that loads current state and syncs the
+// SSH config block. Commands that mutate hosts or profiles call this.
+func (a *appState) syncSSHConfig() error {
+	profiles, err := a.profiles.List()
+	if err != nil {
+		return fmt.Errorf("list profiles: %w", err)
+	}
+	hosts, err := a.hosts.List()
+	if err != nil {
+		return fmt.Errorf("list hosts: %w", err)
+	}
+	return a.sshConfig.Sync(profiles, hosts, a.store.KeysDir())
 }
 
 var rootCmd = &cobra.Command{
@@ -82,17 +100,33 @@ func getApp() (*appState, error) {
 		return nil, fmt.Errorf("init store: %w", err)
 	}
 
+	sshConfigPath, err := config.SSHConfigPath()
+	if err != nil {
+		return nil, fmt.Errorf("resolve ssh config path: %w", err)
+	}
+
+	profiles := core.NewProfileStore(store.ProfilesPath())
+	hosts := core.NewHostStore(store.HostsPath())
+	keys := core.NewKeyManager(store.KeysDir())
+	agent := core.NewAgentManager(store.AgentEnvPath())
+	sshCfg := core.NewSSHConfigWriter(sshConfigPath)
+
 	appInst = &appState{
-		store:    store,
-		profiles: core.NewProfileStore(store.ProfilesPath()),
-		hosts:    core.NewHostStore(store.HostsPath()),
-		verbose:  verbose,
+		store:     store,
+		profiles:  profiles,
+		hosts:     hosts,
+		keys:      keys,
+		agent:     agent,
+		sshConfig: sshCfg,
+		verbose:   verbose,
+	}
+	appInst.doctor = func() *core.DoctorRunner {
+		return core.NewDoctorRunner(store, profiles, hosts, keys, agent)
 	}
 	return appInst, nil
 }
 
 // notImplemented is assigned as RunE for commands not yet implemented.
-// It produces a clear error rather than silently doing nothing.
 func notImplemented(cmd *cobra.Command, _ []string) error {
 	return fmt.Errorf("%s: not implemented", cmd.CommandPath())
 }
