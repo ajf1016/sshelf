@@ -5,12 +5,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 
-	"github.com/ajf1016/sshelf/internal/config"
 	"github.com/ajf1016/sshelf/internal/core"
 	"github.com/ajf1016/sshelf/internal/ui"
+	"github.com/ajf1016/sshelf/internal/wizard"
 )
 
 var profileCmd = &cobra.Command{
@@ -46,104 +45,36 @@ var profileInitCmd = &cobra.Command{
 			return err
 		}
 
-		var (
-			name     string
-			profType string
-			platform string
-			email    string
-			username string
-			keyName  string
-			keyType  string
-		)
-
-		form := huh.NewForm(
-			huh.NewGroup(
-				huh.NewInput().
-					Title("Profile name").
-					Description("Short identifier, e.g. work or personal").
-					Validate(huh.ValidateNotEmpty()).
-					Value(&name),
-
-				huh.NewSelect[string]().
-					Title("Profile type").
-					Options(
-						huh.NewOption("git (GitHub / GitLab / Bitbucket)", config.ProfileTypeGit),
-						huh.NewOption("server (SSH into remote machines)", config.ProfileTypeServer),
-						huh.NewOption("client (custom / other)", config.ProfileTypeClient),
-					).
-					Value(&profType),
-			),
-			huh.NewGroup(
-				huh.NewSelect[string]().
-					Title("Platform").
-					Options(
-						huh.NewOption("GitHub", config.PlatformGitHub),
-						huh.NewOption("GitLab", config.PlatformGitLab),
-						huh.NewOption("Bitbucket", config.PlatformBitbucket),
-						huh.NewOption("Other", config.PlatformOther),
-					).
-					Value(&platform),
-
-				huh.NewInput().
-					Title("Email").
-					Validate(huh.ValidateNotEmpty()).
-					Value(&email),
-
-				huh.NewInput().
-					Title("Username / git user").
-					Validate(huh.ValidateNotEmpty()).
-					Value(&username),
-			),
-			huh.NewGroup(
-				huh.NewInput().
-					Title("Key name").
-					Description("Base filename for the key pair, e.g. work_ed25519").
-					Validate(huh.ValidateNotEmpty()).
-					Value(&keyName),
-
-				huh.NewSelect[string]().
-					Title("Key type").
-					Options(
-						huh.NewOption("ed25519 (recommended)", config.KeyTypeED25519),
-						huh.NewOption("rsa 4096", config.KeyTypeRSA),
-					).
-					Value(&keyType),
-			),
-		)
-
-		if err := form.Run(); err != nil {
-			return fmt.Errorf("wizard cancelled: %w", err)
+		in, err := wizard.RunProfileInit()
+		if err != nil {
+			return err
 		}
 
-		// Generate the key pair.
-		comment := email
-		keyInfo, err := app.keys.Generate(keyName, keyType, comment)
+		keyInfo, err := app.keys.Generate(in.KeyName, in.KeyType, in.Email)
 		if err != nil {
 			return fmt.Errorf("generate key: %w", err)
 		}
 
-		// Create the profile record.
 		p := &core.Profile{
-			Name:     name,
-			Type:     profType,
-			Platform: platform,
-			Email:    email,
-			Username: username,
-			KeyName:  keyName,
+			Name:     in.Name,
+			Type:     in.Type,
+			Platform: in.Platform,
+			Email:    in.Email,
+			Username: in.Username,
+			KeyName:  in.KeyName,
 		}
 		if err := app.profiles.Create(p); err != nil {
 			return fmt.Errorf("create profile: %w", err)
 		}
 
-		// Sync the SSH config block.
 		if err := app.syncSSHConfig(); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: ssh config sync: %v\n", err)
 		}
 
 		pub, _ := app.keys.ReadPublicKey(keyInfo.Name)
 
-		fmt.Printf("\nProfile %q created.\n\n", name)
-		fmt.Printf("Public key (%s):\n%s\n", keyName, pub)
+		fmt.Printf("\nProfile %q created.\n\n", in.Name)
+		fmt.Printf("Public key (%s):\n%s\n", in.KeyName, pub)
 		fmt.Println()
 		fmt.Println(ui.StyleYellow.Render("Add the public key to your platform before using this profile."))
 		return nil
@@ -422,36 +353,18 @@ var profileEditCmd = &cobra.Command{
 			return err
 		}
 
-		// Pre-populate form with existing values.
-		email := p.Email
-		username := p.Username
-		keyName := p.KeyName
-		platform := p.Platform
-
-		form := huh.NewForm(
-			huh.NewGroup(
-				huh.NewInput().Title("Email").Value(&email),
-				huh.NewInput().Title("Username").Value(&username),
-				huh.NewInput().Title("Key name").Value(&keyName),
-				huh.NewInput().Title("Platform").Value(&platform),
-			),
-		)
-		if err := form.Run(); err != nil {
-			return fmt.Errorf("edit cancelled: %w", err)
+		updated, err := wizard.RunProfileEdit(p)
+		if err != nil {
+			return err
 		}
 
-		p.Email = email
-		p.Username = username
-		p.KeyName = keyName
-		p.Platform = platform
-
-		if err := app.profiles.Update(p); err != nil {
+		if err := app.profiles.Update(updated); err != nil {
 			return err
 		}
 		if err := app.syncSSHConfig(); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: ssh config sync: %v\n", err)
 		}
-		fmt.Printf("Updated profile %q.\n", p.Name)
+		fmt.Printf("Updated profile %q.\n", updated.Name)
 		return nil
 	},
 }

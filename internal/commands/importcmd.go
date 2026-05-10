@@ -5,12 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 
 	"github.com/ajf1016/sshelf/internal/config"
 	"github.com/ajf1016/sshelf/internal/core"
 	"github.com/ajf1016/sshelf/internal/ui"
+	"github.com/ajf1016/sshelf/internal/wizard"
 )
 
 var importCmd = &cobra.Command{
@@ -49,22 +49,8 @@ data is deleted without explicit confirmation.`,
 			fmt.Printf("Found %d key file(s) in %s not yet managed by sshelf.\n\n",
 				len(keyCandidates), sshDir)
 
-			var selectedKeys []string
-			keyOptions := make([]huh.Option[string], 0, len(keyCandidates))
-			for _, c := range keyCandidates {
-				keyOptions = append(keyOptions, huh.NewOption(c.KeyName, c.KeyPath))
-			}
-
-			form := huh.NewForm(
-				huh.NewGroup(
-					huh.NewMultiSelect[string]().
-						Title("Select keys to import").
-						Description("Space to toggle, Enter to confirm").
-						Options(keyOptions...).
-						Value(&selectedKeys),
-				),
-			)
-			if err := form.Run(); err == nil {
+			selectedKeys, err := wizard.SelectKeys(keyCandidates)
+			if err == nil {
 				for _, srcPath := range selectedKeys {
 					kInfo, err := scanner.ImportKey(srcPath)
 					if err != nil {
@@ -87,47 +73,15 @@ data is deleted without explicit confirmation.`,
 			fmt.Printf("\nFound %d host block(s) not yet managed by sshelf.\n\n",
 				len(hostCandidates))
 
-			var selectedHosts []string
-			hostOptions := make([]huh.Option[string], 0, len(hostCandidates))
-			for _, h := range hostCandidates {
-				label := fmt.Sprintf("%s → %s", h.Alias, h.Hostname)
-				hostOptions = append(hostOptions, huh.NewOption(label, h.Alias))
-			}
-
-			form := huh.NewForm(
-				huh.NewGroup(
-					huh.NewMultiSelect[string]().
-						Title("Select hosts to import").
-						Description("Space to toggle, Enter to confirm").
-						Options(hostOptions...).
-						Value(&selectedHosts),
-				),
-			)
-
-			if err := form.Run(); err == nil && len(selectedHosts) > 0 {
-				// Build alias → ParsedHost map.
+			selectedHosts, err := wizard.SelectHosts(hostCandidates)
+			if err == nil && len(selectedHosts) > 0 {
 				hostMap := make(map[string]*core.ParsedHost, len(hostCandidates))
 				for _, h := range hostCandidates {
 					hostMap[h.Alias] = h
 				}
 
-				// Let user optionally link all selected hosts to a profile.
 				profiles, _ := app.profiles.List()
-				var linkProfile string
-				if len(profiles) > 0 {
-					profileOptions := []huh.Option[string]{huh.NewOption("(none)", "")}
-					for _, p := range profiles {
-						profileOptions = append(profileOptions, huh.NewOption(p.Name, p.Name))
-					}
-					_ = huh.NewForm(
-						huh.NewGroup(
-							huh.NewSelect[string]().
-								Title("Link imported hosts to a profile?").
-								Options(profileOptions...).
-								Value(&linkProfile),
-						),
-					).Run()
-				}
+				linkProfile, _ := wizard.SelectProfileLink(profiles)
 
 				currentProfiles, _ := app.profiles.List()
 				for _, alias := range selectedHosts {
