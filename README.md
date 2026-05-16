@@ -356,6 +356,31 @@ sshelf key copy work_ed25519
 # → Public key copied to clipboard.
 ```
 
+#### `sshelf key backup`
+
+Encrypt all managed keys into a single vault file. You will be prompted for a passphrase (minimum 8 characters) and asked to confirm it. Store the resulting file somewhere safe — USB drive, cloud storage, password manager attachment, etc.
+
+```bash
+sshelf key backup
+# → saves to ~/.sshelf/keys-backup-2026-05-17.vault
+
+sshelf key backup --out ~/Desktop/mykeys.vault   # custom output path
+```
+
+The vault file is AES-256-GCM encrypted. Without the passphrase it cannot be opened.
+
+#### `sshelf key restore <vault-file>`
+
+Decrypt a vault file and restore the key files into `~/.sshelf/keys/`. You will be prompted for the passphrase used during backup. Existing files are skipped by default.
+
+```bash
+sshelf key restore ~/.sshelf/keys-backup-2026-05-17.vault
+
+sshelf key restore ~/Desktop/mykeys.vault --force   # overwrite existing keys
+```
+
+After restoring, run `sshelf doctor` to verify permissions and re-link keys to profiles.
+
 ---
 
 ### `sshelf host`
@@ -660,6 +685,7 @@ sshelf keeps all its state under `~/.sshelf/`. It never puts files directly in `
 | `~/.sshelf/keys/` | Managed key pairs | `0700` |
 | `~/.sshelf/keys/<name>` | Private key | `0600` |
 | `~/.sshelf/keys/<name>.pub` | Public key | `0644` |
+| `~/.sshelf/keys-backup-<date>.vault` | Encrypted key backup (from `key backup`) | `0600` |
 | `~/.sshelf/agent.env` | Agent PID + socket path (runtime) | `0600` |
 | `~/.ssh/config` | Managed block only — rest is untouched | system |
 

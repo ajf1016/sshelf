@@ -212,9 +212,10 @@ Pipe into eval to apply in the current shell:
 // ─── profile remove ──────────────────────────────────────────────────────────
 
 var profileRemoveCmd = &cobra.Command{
-	Use:   "remove <name>",
-	Short: "Delete a profile and optionally its key pair",
-	Args:  cobra.ExactArgs(1),
+	Use:     "remove <name>",
+	Aliases: []string{"delete"},
+	Short:   "Delete a profile and optionally its key pair",
+	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		app, err := getApp()
 		if err != nil {

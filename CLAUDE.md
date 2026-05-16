@@ -39,6 +39,7 @@ The code is split into three layers:
 - `profile.go` — `ProfileStore`: CRUD on `~/.sshelf/profiles.toml` (BurntSushi/toml). Profile `Name` is the TOML map key, never stored in the file body.
 - `host.go` — `HostStore`: same pattern as ProfileStore but for `~/.sshelf/hosts.toml`.
 - `key.go` — `KeyManager`: generates ed25519/RSA pairs via `os/exec → ssh-keygen`. Keys stored in `~/.sshelf/keys/`.
+- `vault.go` — `BackupKeys` / `RestoreKeys`: AES-256-GCM encrypted tar.gz of all key files. Key derivation uses iterated SHA-256 (100k rounds) with a random 16-byte salt — stdlib only, no extra dependencies. Vault format: `magic(8) + version(1) + salt(16) + nonce(12) + len(8) + ciphertext`.
 - `sshconfig.go` — `SSHConfigWriter`: reads `~/.ssh/config`, replaces only the `# BEGIN sshelf-managed` / `# END sshelf-managed` delimited block, then atomically writes back (`write temp → os.Rename`). Content outside the block is never touched.
 - `agent.go` — `AgentManager`: spawns `ssh-agent`, persists socket/PID to `~/.sshelf/agent.env`. Platform-specific fork in `agent_unix.go` / `agent_windows.go`.
 - `doctor.go` — `DoctorRunner`: independent check functions each returning `(status, message)`. Output rendered as a lipgloss table.
@@ -65,5 +66,6 @@ The code is split into three layers:
 | `~/.sshelf/profiles.toml` | Profile store — TOML map keyed by profile name |
 | `~/.sshelf/hosts.toml` | Host alias store — same pattern |
 | `~/.sshelf/keys/` | SSH key pairs (`<name>_ed25519`, `<name>_ed25519.pub`) |
+| `~/.sshelf/keys-backup-<date>.vault` | Encrypted key backup produced by `key backup` |
 | `~/.sshelf/agent.env` | ssh-agent socket path + PID |
 | `~/.ssh/config` | Written atomically; only the managed block is changed |
