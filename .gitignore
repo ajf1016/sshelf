@@ -12,3 +12,4 @@ phases.txt
 # .github
 
 .env
+.DS_Store
