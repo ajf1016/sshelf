@@ -24,7 +24,7 @@ If you're a developer juggling multiple Git accounts (personal, work, freelance 
 $ sshelf whoami
 
   Active profile:   work
-  Git identity:     Michael Schumacher <ajmal@company.com>
+  Git identity:     Ajmal Fayiz <ajmal@company.com>
   SSH key:          ~/.sshelf/keys/work_ed25519  (created 47 days ago)
   Agent:            running  ·  PID 12345  ·  2 keys loaded
   Host aliases:     github-work, gitlab-work
@@ -134,7 +134,7 @@ This opens an interactive wizard:
     Other
 
 ? Email: ajmal@company.com
-? Username / git user: Michael Schumacher
+? Username / git user: Ajmal Fayiz
 
 ? Key name: work_ed25519
 ? Key type:
@@ -236,7 +236,7 @@ sshelf profile show work
   Type:      git
   Platform:  github
   Email:     ajmal@company.com
-  Username:  Michael Schumacher
+  Username:  Ajmal Fayiz
   Key:       work_ed25519
   Created:   2025-01-15
 
@@ -580,7 +580,7 @@ Print a snapshot of the current identity: active profile, git env vars, key age,
 sshelf whoami
 
   Active profile:   work
-  Git identity:     Michael Schumacher <ajmal@company.com>
+  Git identity:     Ajmal Fayiz <ajmal@company.com>
   SSH key:          ~/.sshelf/keys/work_ed25519  (created 47 days ago)
   Agent:            running  ·  PID 12345  ·  2 keys loaded
   Host aliases:     github-work, gitlab-work, staging
@@ -699,7 +699,7 @@ Host staging
 type       = "git"
 platform   = "github"
 email      = "ajmal@company.com"
-username   = "Michael Schumacher"
+username   = "Ajmal Fayiz"
 key_name   = "work_ed25519"
 active     = true
 created_at = "2025-01-15T10:30:00Z"

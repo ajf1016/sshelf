@@ -1,0 +1,16 @@
+FROM golang:1.23-alpine
+
+RUN apk add --no-cache \
+      git \
+      make \
+      bash \
+      openssh-keygen \
+      openssh-client \
+      ca-certificates
+
+# Pin golangci-lint (your CI version)
+RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0
+
+WORKDIR /workspace
+
+CMD ["sh"]

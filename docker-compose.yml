@@ -1,0 +1,47 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/workspace
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/workspace
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    working_dir: /workspace
+    command: go test -v -race ./...
+
+  lint:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/workspace
+      - go-mod-cache:/go/pkg/mod
+    working_dir: /workspace
+    command: golangci-lint run
+
+  # Throwaway runtime — try sshelf without touching your real ~/.ssh
+  try:
+    build:
+      context: .
+      args:
+        VERSION: dev
+    stdin_open: true
+    tty: true
+    entrypoint: sshelf
+
+volumes:
+  go-mod-cache:
+  go-build-cache:
