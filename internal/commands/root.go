@@ -127,7 +127,3 @@ func getApp() (*appState, error) {
 	return appInst, nil
 }
 
-// notImplemented is assigned as RunE for commands not yet implemented.
-func notImplemented(cmd *cobra.Command, _ []string) error {
-	return fmt.Errorf("%s: not implemented", cmd.CommandPath())
-}

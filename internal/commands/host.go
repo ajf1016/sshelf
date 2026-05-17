@@ -237,7 +237,7 @@ var hostRemoveCmd = &cobra.Command{
 		if !yes {
 			fmt.Printf("Remove host alias %q? [y/N] ", alias)
 			var answer string
-			fmt.Scanln(&answer)
+			_, _ = fmt.Scanln(&answer)
 			if strings.ToLower(strings.TrimSpace(answer)) != "y" {
 				fmt.Println("Aborted.")
 				return nil
@@ -402,7 +402,7 @@ var hostJumpCmd = &cobra.Command{
 		if via == "" {
 			fmt.Printf("Current ProxyJump: %s\n", orDash(h.JumpHost))
 			fmt.Print("New ProxyJump alias (leave blank to clear): ")
-			fmt.Scanln(&via)
+			_, _ = fmt.Scanln(&via)
 		}
 		h.JumpHost = strings.TrimSpace(via)
 		if err := app.hosts.Update(h); err != nil {

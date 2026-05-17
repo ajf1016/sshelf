@@ -152,7 +152,8 @@ func RestoreKeys(vaultPath, destDir, passphrase string, force bool) (int, error)
 	ctLen := binary.BigEndian.Uint64(data[pos : pos+8])
 	pos += 8
 
-	if uint64(len(data)-pos) != ctLen {
+	remaining := len(data) - pos
+	if remaining < 0 || uint64(remaining) != ctLen {
 		return 0, fmt.Errorf("vault file is corrupt (length mismatch)")
 	}
 	ciphertext := data[pos:]
@@ -191,7 +192,12 @@ func RestoreKeys(vaultPath, destDir, passphrase string, force bool) (int, error)
 			return count, fmt.Errorf("read archive: %w", err)
 		}
 
-		destFile := filepath.Join(destDir, hdr.Name)
+		// Use only the base name to prevent path traversal (zip slip).
+		name := filepath.Base(hdr.Name)
+		if name == "." || name == ".." || name == "" {
+			continue
+		}
+		destFile := filepath.Join(destDir, name)
 		if !force {
 			if _, err := os.Stat(destFile); err == nil {
 				// File exists and force not set — skip.
@@ -203,7 +209,7 @@ func RestoreKeys(vaultPath, destDir, passphrase string, force bool) (int, error)
 		if err != nil {
 			return count, fmt.Errorf("read %s from archive: %w", hdr.Name, err)
 		}
-		perm := os.FileMode(hdr.Mode)
+		perm := os.FileMode(hdr.Mode & 0777) //nolint:gosec // masking to valid permission bits
 		if perm == 0 {
 			perm = 0600
 		}

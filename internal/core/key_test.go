@@ -46,7 +46,6 @@ func TestKeyManager_GenerateDuplicate(t *testing.T) {
 	_, err := mgr.Generate("my_key", config.KeyTypeED25519, "")
 	require.NoError(t, err)
 
-	err = nil
 	_, err = mgr.Generate("my_key", config.KeyTypeED25519, "")
 	var target *utils.ErrAlreadyExists
 	require.ErrorAs(t, err, &target)

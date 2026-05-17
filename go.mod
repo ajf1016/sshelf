@@ -1,6 +1,6 @@
 module github.com/ajf1016/sshelf
 
-go 1.23.0
+go 1.25.0
 
 require (
 	github.com/BurntSushi/toml v1.3.2

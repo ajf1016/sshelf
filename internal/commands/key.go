@@ -148,7 +148,7 @@ var keyRemoveCmd = &cobra.Command{
 		if !yes {
 			fmt.Printf("Delete key %q and its public key? [y/N] ", name)
 			var answer string
-			fmt.Scanln(&answer)
+			_, _ = fmt.Scanln(&answer)
 			if strings.ToLower(strings.TrimSpace(answer)) != "y" {
 				fmt.Println("Aborted.")
 				return nil

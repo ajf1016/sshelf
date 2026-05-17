@@ -246,7 +246,7 @@ var profileRemoveCmd = &cobra.Command{
 			}
 			fmt.Print("? [y/N] ")
 			var answer string
-			fmt.Scanln(&answer)
+			_, _ = fmt.Scanln(&answer)
 			if strings.ToLower(strings.TrimSpace(answer)) != "y" {
 				fmt.Println("Aborted.")
 				return nil

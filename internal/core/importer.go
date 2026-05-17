@@ -22,10 +22,10 @@ type ImportCandidate struct {
 // ImportScanner discovers existing SSH host blocks and key files that are not
 // yet managed by sshelf.
 type ImportScanner struct {
-	sshDir  string
-	hosts   *HostStore
-	keys    *KeyManager
-	writer  *SSHConfigWriter
+	sshDir string
+	hosts  *HostStore
+	keys   *KeyManager
+	writer *SSHConfigWriter
 }
 
 // NewImportScanner returns a scanner for the given SSH directory.
@@ -107,7 +107,7 @@ func (s *ImportScanner) ScanKeys() ([]ImportCandidate, error) {
 func (s *ImportScanner) ImportHost(ph *ParsedHost, profileName, keyName string, profiles []*Profile) error {
 	port := 0
 	if ph.Port != "" {
-		fmt.Sscanf(ph.Port, "%d", &port)
+		_, _ = fmt.Sscanf(ph.Port, "%d", &port)
 	}
 
 	// Derive the key name from the IdentityFile path.

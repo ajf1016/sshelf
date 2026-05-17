@@ -225,4 +225,3 @@ func parseAgentOutput(output string) (*AgentInfo, error) {
 	info.Running = true
 	return info, nil
 }
-
