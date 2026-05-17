@@ -91,3 +91,41 @@ jobs:
             dist/checksums.txt
           draft: false
           prerelease: false
+
+  update-homebrew-tap:
+    name: Update Homebrew Tap
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - name: Compute source tarball SHA256
+        id: sha
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          URL="https://github.com/${{ github.repository }}/archive/refs/tags/${VERSION}.tar.gz"
+          SHA=$(curl -sL "$URL" | sha256sum | awk '{print $1}')
+          echo "sha256=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout homebrew tap
+        uses: actions/checkout@v4
+        with:
+          repository: ajf1016/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update formula
+        run: |
+          VERSION="${{ steps.sha.outputs.version }}"
+          SHA="${{ steps.sha.outputs.sha256 }}"
+          FORMULA="homebrew-tap/Formula/sshelf.rb"
+          sed -i "s|url \".*archive/refs/tags/.*\"|url \"https://github.com/${{ github.repository }}/archive/refs/tags/v${VERSION}.tar.gz\"|" "$FORMULA"
+          sed -i "s|sha256 \".*\"|sha256 \"${SHA}\"|" "$FORMULA"
+
+      - name: Commit and push formula update
+        working-directory: homebrew-tap
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/sshelf.rb
+          git commit -m "sshelf ${{ github.ref_name }}"
+          git push
