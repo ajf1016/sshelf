@@ -32,7 +32,7 @@ go build -ldflags="-X github.com/ajf1016/sshelf/internal/config.AppVersion=v1.2.
 
 The code is split into three layers:
 
-**`internal/commands/`** — Cobra command handlers. Thin wrappers only: parse args/flags, call core services, format output with `lipgloss`. No business logic.
+**`internal/commands/`** — Cobra command handlers. Thin wrappers only: parse args/flags, call core services, format output with `lipgloss`. No business logic. `shell.go` also contains the `stdoutIsTTY()` helper used by `profile switch` to detect when the user forgot `eval`.
 
 **`internal/core/`** — All business logic:
 - `store.go` — `Store` is initialized once at startup (`getApp()` in `root.go`) and shared across all commands. It resolves paths for all sub-resources.
@@ -55,7 +55,7 @@ The code is split into three layers:
 - `appState` in `root.go` is initialized lazily on first `getApp()` call so commands like `completion` never touch the filesystem.
 - Every store write goes through `utils.AtomicWrite` (temp file + `os.Rename`) to prevent corrupt state on crash.
 - `SSHConfigWriter.Sync` is idempotent — calling it twice with the same input produces the same file.
-- Profile switching requires `eval $(sshelf profile switch <name>)` in the parent shell because subprocesses cannot export env vars to the parent.
+- Profile switching requires `eval $(sshelf profile switch <name>)` in the parent shell because subprocesses cannot export env vars to the parent. `sshelf shell setup` installs a `sshelf-switch` wrapper function in the user's rc file (zsh/bash/fish) so they never type `eval $(...)` directly. If `profile switch` is run without eval (stdout is a TTY), it prints a hint to stderr pointing to `sshelf shell setup`.
 - `gosec G204` (subprocess launched with variable) is explicitly excluded in `.golangci.yml` — `ssh-keygen` calls via `os/exec` are intentional.
 - Key files stored without passphrases; security relies on `0600` filesystem permissions enforced at generation and checked by `doctor`.
 

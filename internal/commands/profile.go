@@ -205,6 +205,16 @@ Pipe into eval to apply in the current shell:
 				fmt.Println(line)
 			}
 		}
+
+		// If stdout is a terminal the user ran this command directly — the
+		// exported vars above won't apply to their shell. Show a one-time hint.
+		if stdoutIsTTY() {
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, "  These env vars were printed but not applied to your shell.")
+			fmt.Fprintln(os.Stderr, "  Run this once to fix that permanently:")
+			fmt.Fprintln(os.Stderr, "    sshelf shell setup")
+			fmt.Fprintln(os.Stderr, "  Then switch with:  sshelf-switch "+name)
+		}
 		return nil
 	},
 }

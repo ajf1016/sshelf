@@ -76,6 +76,7 @@ func init() {
 		whoamiCmd,
 		importCmd,
 		completionCmd,
+		shellCmd,
 	)
 }
 
