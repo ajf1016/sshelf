@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write   # needed to create GitHub Releases and upload assets
+
+env:
+  GO_VERSION: "1.23"
+
+jobs:
+  release:
+    name: Build & Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so the tag is available
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build all platform binaries
+        run: |
+          mkdir -p dist
+          declare -A targets=(
+            ["linux-amd64"]="linux/amd64"
+            ["linux-arm64"]="linux/arm64"
+            ["darwin-amd64"]="darwin/amd64"
+            ["darwin-arm64"]="darwin/arm64"
+          )
+          for name in "${!targets[@]}"; do
+            IFS='/' read -r goos goarch <<< "${targets[$name]}"
+            echo "Building sshelf-${name}..."
+            CGO_ENABLED=0 GOOS=$goos GOARCH=$goarch \
+              go build -trimpath \
+                -ldflags="-s -w -X github.com/ajf1016/sshelf/internal/config.AppVersion=${GITHUB_REF_NAME}" \
+                -o dist/sshelf-${name} \
+                ./cmd/sshelf
+          done
+          ls -lh dist/
+
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum sshelf-* > checksums.txt && cat checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body: |
+            ## Install
+
+            **macOS (Apple Silicon)**
+            ```bash
+            curl -Lo sshelf https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/sshelf-darwin-arm64
+            chmod +x sshelf && sudo mv sshelf /usr/local/bin/
+            ```
+
+            **macOS (Intel)**
+            ```bash
+            curl -Lo sshelf https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/sshelf-darwin-amd64
+            chmod +x sshelf && sudo mv sshelf /usr/local/bin/
+            ```
+
+            **Linux (x86_64)**
+            ```bash
+            curl -Lo sshelf https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/sshelf-linux-amd64
+            chmod +x sshelf && sudo mv sshelf /usr/local/bin/
+            ```
+
+            **go install**
+            ```bash
+            go install github.com/${{ github.repository }}/cmd/sshelf@${{ github.ref_name }}
+            ```
+
+            See [README](https://github.com/${{ github.repository }}#installation) for full install instructions.
+
+            ## Checksums
+            Verify your download against `checksums.txt` attached below.
+          files: |
+            dist/sshelf-linux-amd64
+            dist/sshelf-linux-arm64
+            dist/sshelf-darwin-amd64
+            dist/sshelf-darwin-arm64
+            dist/checksums.txt
+          draft: false
+          prerelease: false
