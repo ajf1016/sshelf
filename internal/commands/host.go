@@ -19,6 +19,8 @@ var hostCmd = &cobra.Command{
 	Use:   "host",
 	Short: "Manage SSH host aliases",
 	Long:  "Add, test, and connect to SSH host aliases managed in the sshelf block of ~/.ssh/config.",
+	Args:  cobra.ArbitraryArgs,
+	RunE:  groupRunE,
 }
 
 func init() {

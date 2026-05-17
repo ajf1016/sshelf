@@ -18,6 +18,8 @@ var keyCmd = &cobra.Command{
 	Use:   "key",
 	Short: "Manage SSH key pairs",
 	Long:  "Generate, import, rotate, copy, and back up SSH key pairs managed by sshelf.",
+	Args:  cobra.ArbitraryArgs,
+	RunE:  groupRunE,
 }
 
 func init() {

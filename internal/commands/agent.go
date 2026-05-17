@@ -13,6 +13,8 @@ var agentCmd = &cobra.Command{
 	Use:   "agent",
 	Short: "Manage the SSH agent",
 	Long:  "Start, stop, and inspect the ssh-agent process and the keys it has loaded.",
+	Args:  cobra.ArbitraryArgs,
+	RunE:  groupRunE,
 }
 
 func init() {

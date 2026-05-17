@@ -3,11 +3,13 @@ package commands
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/ajf1016/sshelf/internal/config"
 	"github.com/ajf1016/sshelf/internal/core"
+	"github.com/ajf1016/sshelf/internal/ui"
 )
 
 var (
@@ -57,10 +59,103 @@ without ever hand-editing ~/.ssh/config again.`,
 
 // Execute is the single entry point called from main.
 func Execute() {
+	rootCmd.SilenceErrors = true  // we print errors ourselves
+	rootCmd.SilenceUsage = true   // don't dump full help on every typo
+	rootCmd.SuggestionsMinimumDistance = 1
+
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		printCmdError(err)
 		os.Exit(1)
 	}
+}
+
+// printCmdError formats command errors with color, suggestions, and a concise
+// list of available subcommands for the parent that was being addressed.
+func printCmdError(err error) {
+	msg := err.Error()
+
+	// Separate the main error from any "Did you mean" hint Cobra appended.
+	parts := strings.SplitN(msg, "\n", 2)
+	mainMsg := parts[0]
+	hint := ""
+	if len(parts) > 1 {
+		hint = strings.TrimSpace(parts[1])
+	}
+
+	fmt.Fprintln(os.Stderr, ui.StyleRed.Render("Error:")+` `+mainMsg)
+
+	if hint != "" {
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr, ui.StyleYellow.Render(hint))
+	}
+
+	// Find the deepest valid parent command the user was targeting.
+	parent := resolveParent(os.Args[1:])
+
+	// If it's an unknown command or subcommand, list what's available.
+	if strings.Contains(msg, "unknown command") && parent != nil {
+		subs := parent.Commands()
+		if len(subs) > 0 {
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, ui.StyleBold.Render("Available commands:"))
+			for _, sub := range subs {
+				if !sub.Hidden {
+					fmt.Fprintf(os.Stderr, "  %-14s %s\n",
+						ui.StyleGreen.Render(sub.Name()), sub.Short)
+				}
+			}
+		}
+	}
+
+	// Footer hint.
+	fmt.Fprintln(os.Stderr)
+	if parent != nil && parent != rootCmd {
+		fmt.Fprintf(os.Stderr, "Run '%s --help' for usage.\n", parent.CommandPath())
+	} else {
+		fmt.Fprintln(os.Stderr, "Run 'sshelf --help' for usage.")
+	}
+}
+
+// resolveParent walks os.Args and returns the deepest cobra.Command that
+// was successfully matched — i.e. the parent of the failing argument.
+func resolveParent(args []string) *cobra.Command {
+	cmd := rootCmd
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") {
+			break
+		}
+		found := false
+		for _, sub := range cmd.Commands() {
+			if sub.Name() == arg || contains(sub.Aliases, arg) {
+				cmd = sub
+				found = true
+				break
+			}
+		}
+		if !found {
+			break
+		}
+	}
+	return cmd
+}
+
+func contains(slice []string, s string) bool {
+	for _, v := range slice {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
+// groupRunE is the RunE for command groups (profile, key, host, …).
+// When called with no args it shows help; with unknown args it returns a
+// formatted error that printCmdError will handle with suggestions.
+func groupRunE(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return cmd.Help()
+	}
+	return fmt.Errorf("unknown command %q for %q", args[0], cmd.CommandPath())
 }
 
 func init() {

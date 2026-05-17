@@ -16,6 +16,8 @@ var profileCmd = &cobra.Command{
 	Use:   "profile",
 	Short: "Manage SSH profiles",
 	Long:  "Create, switch, list, and manage SSH identity profiles for git accounts, remote servers, and client projects.",
+	Args:  cobra.ArbitraryArgs,
+	RunE:  groupRunE,
 }
 
 func init() {

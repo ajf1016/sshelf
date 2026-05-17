@@ -15,6 +15,8 @@ var shellCmd = &cobra.Command{
 	Use:   "shell",
 	Short: "Shell integration utilities",
 	Long:  "Install and manage sshelf's shell integration so you can switch profiles without eval $().",
+	Args:  cobra.ArbitraryArgs,
+	RunE:  groupRunE,
 }
 
 var shellSetupCmd = &cobra.Command{
