@@ -354,7 +354,13 @@ var profileEditCmd = &cobra.Command{
 			return err
 		}
 
-		updated, err := wizard.RunProfileEdit(p)
+		var keyNames []string
+		if ks, _ := app.keys.List(); len(ks) > 0 {
+			for _, k := range ks {
+				keyNames = append(keyNames, k.Name)
+			}
+		}
+		updated, err := wizard.RunProfileEdit(p, keyNames)
 		if err != nil {
 			return err
 		}

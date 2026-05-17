@@ -107,15 +107,16 @@ func RunProfileInit() (*ProfileInitInput, error) {
 }
 
 // RunProfileEdit runs the interactive profile edit form pre-populated with the
-// current profile values. Returns a shallow copy of p with the updated fields.
-func RunProfileEdit(p *core.Profile) (*core.Profile, error) {
+// current profile values. keyNames is used for autocomplete on the Key name field.
+// Returns a shallow copy of p with the updated fields.
+func RunProfileEdit(p *core.Profile, keyNames []string) (*core.Profile, error) {
 	updated := *p
 
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().Title("Email").Value(&updated.Email),
 			huh.NewInput().Title("Username").Value(&updated.Username),
-			huh.NewInput().Title("Key name").Value(&updated.KeyName),
+			huh.NewInput().Title("Key name").Suggestions(keyNames).Value(&updated.KeyName),
 			huh.NewInput().Title("Platform").Value(&updated.Platform),
 		),
 	)

@@ -67,7 +67,24 @@ var hostAddCmd = &cobra.Command{
 
 		// If required flags are absent, run the interactive wizard.
 		if name == "" || hostname == "" || user == "" {
-			if err := runHostWizard(&name, &hostname, &user, &keyName, &profileName, &jumpHost); err != nil {
+			// Pre-load existing names for autocomplete suggestions.
+			var profileNames, keyNames, hostAliases []string
+			if ps, _ := app.profiles.List(); len(ps) > 0 {
+				for _, p := range ps {
+					profileNames = append(profileNames, p.Name)
+				}
+			}
+			if ks, _ := app.keys.List(); len(ks) > 0 {
+				for _, k := range ks {
+					keyNames = append(keyNames, k.Name)
+				}
+			}
+			if hs, _ := app.hosts.List(); len(hs) > 0 {
+				for _, h := range hs {
+					hostAliases = append(hostAliases, h.Name)
+				}
+			}
+			if err := runHostWizard(&name, &hostname, &user, &keyName, &profileName, &jumpHost, profileNames, keyNames, hostAliases); err != nil {
 				return err
 			}
 		}
@@ -92,7 +109,8 @@ var hostAddCmd = &cobra.Command{
 	},
 }
 
-func runHostWizard(name, hostname, user, keyName, profileName, jumpHost *string) error {
+func runHostWizard(name, hostname, user, keyName, profileName, jumpHost *string, profileNames, keyNames, hostAliases []string) error {
+	commonUsers := []string{"ubuntu", "root", "ec2-user", "admin", "git", "debian"}
 	return huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
@@ -108,20 +126,24 @@ func runHostWizard(name, hostname, user, keyName, profileName, jumpHost *string)
 
 			huh.NewInput().
 				Title("SSH user").
+				Suggestions(commonUsers).
 				Validate(huh.ValidateNotEmpty()).
 				Value(user),
 
 			huh.NewInput().
 				Title("Identity key name (optional)").
 				Description("Leave blank to inherit from profile").
+				Suggestions(keyNames).
 				Value(keyName),
 
 			huh.NewInput().
 				Title("Link to profile (optional)").
+				Suggestions(profileNames).
 				Value(profileName),
 
 			huh.NewInput().
 				Title("ProxyJump / bastion alias (optional)").
+				Suggestions(hostAliases).
 				Value(jumpHost),
 		),
 	).Run()
