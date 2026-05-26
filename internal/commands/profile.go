@@ -306,7 +306,7 @@ var profileCloneCmd = &cobra.Command{
 
 // ─── profile rename ──────────────────────────────────────────────────────────
 
-var profileRenameCmd = &cobra.Command{
+	var profileRenameCmd = &cobra.Command{
 	Use:   "rename <old-name> <new-name>",
 	Short: "Rename a profile and update all host references",
 	Args:  cobra.ExactArgs(2),
@@ -317,16 +317,8 @@ var profileRenameCmd = &cobra.Command{
 		}
 		oldName, newName := args[0], args[1]
 
-		src, err := app.profiles.Get(oldName)
-		if err != nil {
-			return err
-		}
-		// Create under new name, delete old.
-		src.Name = newName
-		if err := app.profiles.Create(src); err != nil {
-			return err
-		}
-		if err := app.profiles.Delete(oldName); err != nil {
+		// Atomically rename in a single save cycle.
+		if err := app.profiles.Rename(oldName, newName); err != nil {
 			return err
 		}
 
@@ -335,11 +327,17 @@ var profileRenameCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		var hostErrs []string
 		for _, h := range hosts {
 			if h.ProfileName == oldName {
 				h.ProfileName = newName
-				_ = app.hosts.Update(h)
+				if err := app.hosts.Update(h); err != nil {
+					hostErrs = append(hostErrs, h.Name)
+				}
 			}
+		}
+		if len(hostErrs) > 0 {
+			return fmt.Errorf("renamed profile but failed to update host references: %s", strings.Join(hostErrs, ", "))
 		}
 
 		if err := app.syncSSHConfig(); err != nil {

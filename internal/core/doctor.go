@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -192,7 +193,11 @@ func (r *DoctorRunner) checkAgentRunning() *CheckResult {
 func (r *DoctorRunner) checkActiveProfile() *CheckResult {
 	active, err := r.profiles.ActiveProfile()
 	if err != nil {
-		return &CheckResult{Name: "active-profile", Status: CheckWarn, Message: "no active profile set"}
+		var notFound *utils.ErrNotFound
+		if errors.As(err, &notFound) {
+			return &CheckResult{Name: "active-profile", Status: CheckWarn, Message: "no active profile set"}
+		}
+		return &CheckResult{Name: "active-profile", Status: CheckFail, Message: err.Error()}
 	}
 	return &CheckResult{
 		Name:    "active-profile",
@@ -272,14 +277,26 @@ func (r *DoctorRunner) checkOrphanedKeys() *CheckResult {
 		Fixable: true,
 		Fix: func() error {
 			for _, name := range orphans {
-				bakPriv := filepath.Join(r.keys.KeysDir(), name+".bak")
 				priv := filepath.Join(r.keys.KeysDir(), name)
-				if err := os.Rename(priv, bakPriv); err != nil {
-					return fmt.Errorf("archive %s: %w", name, err)
-				}
-				pub := priv + ".pub"
-				if utils.FileExists(pub) {
-					_ = os.Rename(pub, pub+".bak")
+				bakPriv := filepath.Join(r.keys.KeysDir(), name+".bak")
+
+				if utils.FileExists(bakPriv) {
+					// Backup already exists — remove the orphan directly.
+					if err := os.Remove(priv); err != nil {
+						return fmt.Errorf("remove %s: %w", name, err)
+					}
+					pub := priv + ".pub"
+					if utils.FileExists(pub) {
+						_ = os.Remove(pub)
+					}
+				} else {
+					if err := os.Rename(priv, bakPriv); err != nil {
+						return fmt.Errorf("archive %s: %w", name, err)
+					}
+					pub := priv + ".pub"
+					if utils.FileExists(pub) {
+						_ = os.Rename(pub, pub+".bak")
+					}
 				}
 			}
 			return nil

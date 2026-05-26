@@ -101,8 +101,12 @@ func (m *AgentManager) ListKeys(socketPath string) ([]string, error) {
 	cmd.Env = append(os.Environ(), "SSH_AUTH_SOCK="+socketPath)
 	out, err := cmd.Output()
 	if err != nil {
-		// Exit code 1 means "no identities" — not a real error.
-		return nil, nil
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
+			// Exit code 1 means "no identities" — not a real error.
+			return nil, nil
+		}
+		return nil, fmt.Errorf("ssh-add -l: %w", err)
 	}
 
 	var lines []string
