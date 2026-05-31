@@ -88,6 +88,18 @@ func (w *SSHConfigWriter) readExisting() (string, error) {
 // mergeBlock replaces the sshelf-managed block inside existing with newBlock.
 // If newBlock is empty the block is removed. If no block exists, newBlock is appended.
 func mergeBlock(existing, newBlock string) string {
+	// Handle corrupt state: one delimiter without the other.
+	// Remove the orphaned delimiter comment before proceeding.
+	hasBegin := strings.Contains(existing, config.SSHConfigBegin)
+	hasEnd := strings.Contains(existing, config.SSHConfigEnd)
+	if hasBegin != hasEnd {
+		orphan := config.SSHConfigBegin
+		if !hasBegin {
+			orphan = config.SSHConfigEnd
+		}
+		existing = strings.ReplaceAll(existing, orphan, "")
+	}
+
 	beginIdx := strings.Index(existing, config.SSHConfigBegin)
 	endIdx := strings.Index(existing, config.SSHConfigEnd)
 

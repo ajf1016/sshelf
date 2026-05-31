@@ -135,6 +135,27 @@ func (s *ProfileStore) Update(p *Profile) error {
 	return s.save(f)
 }
 
+// Rename atomically renames a profile from oldName to newName in a single
+// save cycle. Returns ErrNotFound if oldName does not exist, or
+// ErrAlreadyExists if newName is already taken.
+func (s *ProfileStore) Rename(oldName, newName string) error {
+	f, err := s.load()
+	if err != nil {
+		return err
+	}
+	p, ok := f.Profiles[oldName]
+	if !ok {
+		return &utils.ErrNotFound{Resource: "profile", Name: oldName}
+	}
+	if _, ok := f.Profiles[newName]; ok {
+		return &utils.ErrAlreadyExists{Resource: "profile", Name: newName}
+	}
+	p.Name = newName
+	delete(f.Profiles, oldName)
+	f.Profiles[newName] = p
+	return s.save(f)
+}
+
 // Delete removes a profile by name. Returns ErrNotFound if it does not exist.
 func (s *ProfileStore) Delete(name string) error {
 	f, err := s.load()

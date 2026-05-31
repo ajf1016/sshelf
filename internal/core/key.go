@@ -282,8 +282,10 @@ func (m *KeyManager) infoFromPath(privPath string) (*KeyInfo, error) {
 				switch parts[0] {
 				case "ssh-rsa":
 					info.Type = config.KeyTypeRSA
-				default:
+				case "ssh-ed25519":
 					info.Type = config.KeyTypeED25519
+				default:
+					info.Type = parts[0]
 				}
 				if len(parts) >= 3 {
 					info.Comment = parts[2]
